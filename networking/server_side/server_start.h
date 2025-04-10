@@ -86,6 +86,8 @@ void *handleClientResponses(void *args)
             if (last_modified[filename] < timestamp)
             {
                 last_modified[filename] = timestamp;
+                std::string prev_file_name = SERVER_FILE + hash_maintainence[filename]+ "." + extension;
+                std::remove(prev_file_name.c_str());
                 hash_maintainence[filename] = hash;
             }
             else
