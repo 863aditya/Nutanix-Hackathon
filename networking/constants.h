@@ -1,3 +1,4 @@
+#pragma once
 #include<string>
 #define BUFFER_SIZE 1024
 #define MAX_NO_MACHINES 101
@@ -6,9 +7,9 @@
 #define ADD_USER "ADD_USER"
 #define CREATE_GROUP "CREATE_GROUP"
 #define ADD_USER_TO_GROUP "ADD_TO_GROUP"
-#define SERVER_ADDR "172.16.64.54"
+#define SERVER_ADDR "127.0.0.1"
 #define SERVER_PORT_N 4500
-#define MAIN_SERVER_IP "172.16.64.54"
+#define MAIN_SERVER_IP "127.0.0.1"
 #define LOGGED_SUCC "LOGGED SUCCESSFULLY!"
 #define CONTROL_INFO_FILE "control_info.txt"
 #define GET "GET"

@@ -1,7 +1,5 @@
-#include<networking/constants.h>
-#include<networking/helper.h>
-#include<networking/client_side/client.h>
-#include<networking/server_side/server_start.h>
+#include "networking/client_side/client.h"
+#include "networking/server_side/server_start.h"
 #include<iostream>
 #include<pthread.h>
 
@@ -19,5 +17,6 @@ int main(){
         pthread_create(&server_thread,NULL,run_server,NULL);
         pthread_join(server_thread,NULL);
     }
+    std::cin.get();
     return 0;
 }

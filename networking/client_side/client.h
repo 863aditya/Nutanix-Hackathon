@@ -38,10 +38,12 @@ void init(){
 
 void send_data(char* data){
     int connection_response = connect(client_socket,(struct sockaddr *)&server_address,sizeof(server_address));
+    printf("%d\n",connection_response);
     while(connection_response<0){
         connection_response = connect(client_socket,(struct sockaddr *)&server_address,sizeof(server_address));
     }
     send(client_socket,data,strlen(data),0);
+    printf("connection estab and data sent\n");
 }
 
 void change_client(std::string &username){
@@ -131,6 +133,7 @@ void check_control_info(std::string &username){
     while(std::getline(file,line)){
         tokens.emplace_back(line);
     }
+    printf("check\n");
     if(tokens[0]==username){
         
     }
@@ -141,11 +144,15 @@ void check_control_info(std::string &username){
 
 void handleLogin(char* data,std::string username){
     send_data(data);
+    printf("sent data\n");
     char buffer[BUFFER_SIZE]={0};
-    read(client_socket,buffer,BUFFER_SIZE);
-    if(buffer == LOGGED_SUCC){
-        check_control_info(username);
-    }
+    recv(client_socket,buffer,BUFFER_SIZE,0);
+    printf("recv\n");
+    std::cout<<buffer<<std::endl;
+    // if(buffer == LOGGED_SUCC){
+    //     std::cout<<"here\n";
+    //     check_control_info(username);
+    // }
 }
 
 void* initialise_groups(void* arg){

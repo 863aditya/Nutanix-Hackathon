@@ -43,6 +43,7 @@ void* handleClientResponses(void* args){
             if(USER_NAMES.count(username) && PASSWORDS[username]==password){
                 const char* reply = LOGGED_SUCC;
                 send((*client_socket),reply, strlen(reply),0);
+                std::cout<<"success login"<<std::endl;
             }
         }
         //protocol for adding user
@@ -70,11 +71,12 @@ void* handleClientResponses(void* args){
 
         }
         close((*client_socket));
+        printf("closing\n");
     }
 }
 
 void* run_server(void* arg){
-
+    std::cout<<"starting server"<<std::endl;
     int socket_server =  socket(AF_INET,SOCK_STREAM,0);
     sockaddr_in address_server;
     address_server.sin_family=AF_INET;
@@ -85,16 +87,19 @@ void* run_server(void* arg){
     socklen_t optlen=sizeof(opt);
     setsockopt(socket_server,SOL_SOCKET,SO_RCVTIMEO,&opt,optlen);
     listen(socket_server,MAX_NO_MACHINES);
-
+    std::cout<<"Listening"<<std::endl;
 
     while(true){
         int client_socket = accept(socket_server,(struct sockaddr *)&address_server,&optlen);
         if(client_socket<0){
+            std::cout<<"contiuning\n";
             continue;
         }
         pthread_t t;
+        
         void* arg=&client_socket;
         pthread_create(&t,NULL,handleClientResponses,arg);
-        pthread_detach(t);
+        std::cout<<"starting a new thread"<<std::endl;
+        pthread_join(t,NULL);
     }
 }
