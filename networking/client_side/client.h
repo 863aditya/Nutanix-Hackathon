@@ -159,7 +159,15 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
                 std::cout << protocol_data << '\n';
                 std::ifstream file(entry.path(), std::ios::binary);
                 char *result = convert_to_char(protocol_data);
-                send(client_socket, result, sizeof(result), 0);
+                // send(client_socket, result, sizeof(result), 0);
+                int new_client_socket = socket(AF_INET, SOCK_STREAM, 0);
+                int connection_response = connect(new_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
+                printf("%d\n", connection_response);
+                while (connection_response < 0)
+                {
+                    connection_response = connect(new_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
+                }
+                send(new_client_socket, result, strlen(result), 0);
                 char buffer[BUFFER_SIZE] = {0};
                 while (!file.eof())
                 {
@@ -167,7 +175,7 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
                     file.read(buffer, BUFFER_SIZE);
                     int bytes_read = file.gcount();
                     std::cout << "Before Send\n";
-                    send_data(buffer);
+                    send(new_client_socket,buffer,sizeof(buffer),0);
                     std::cout << "After Send\n";
                 }
                 hashes[current_file_name] = current_file_hash;
