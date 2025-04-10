@@ -15,6 +15,9 @@
 #include <filesystem>
 #include "../constants.h"
 #include "../helper.h"
+#include <sys/stat.h>
+#include <iomanip>
+#include <ctime>
 
 #define CLIENT_SIDE_PORT 4600
 #define CLIENT_SIDE_IP "172.16.64.54"
@@ -131,16 +134,26 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
     while (true)
     {
         for (const auto &entry : std::filesystem::directory_iterator(path))
-        {
+        {   
+            if(entry.path().filename()==CONTROL_INFO)continue;
             if (std::filesystem::is_regular_file(entry))
                 std::cout << "File: " << entry.path().filename() << '\n';
             else if (std::filesystem::is_directory(entry))
                 std::cout << "Directory: " << entry.path().filename() << '\n';
             std::string current_file_name = entry.path().filename();
             std::string current_file_hash = sha256_file(entry.path());
+            std::string timestamp = getLastModifiedTime(entry.path());
             if (hashes[current_file_name] != current_file_hash)
             {
                 // handle_file_change(entry.path());
+                std::string protocol_data = DATA_STREAM + space + current_file_name + space+ timestamp + space + "txt";
+                std::ifstream file(entry.path(),std::ios::binary);
+                char buffer[BUFFER_SIZE]={0};
+                while(!file.eof()){
+                    file.read(buffer, BUFFER_SIZE);
+                    int bytes_read = file.gcount();
+                    send(client_socket, buffer, bytes_read, 0);
+                }
                 hashes[current_file_name] = current_file_hash;
             }
         }

@@ -8,6 +8,9 @@
 #include <openssl/sha.h>
 #include <iomanip>
 #include<algorithm>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 
 std::string num_to_string(int val){
     std::string answer="";
@@ -23,6 +26,19 @@ char* convert_to_char(std::string data){
     std::strcpy(response,data.c_str());
     return response;
 }
+
+std::vector<std::string> splitBySemicolon(const std::string& line) {
+    std::vector<std::string> result;
+    std::stringstream ss(line);
+    std::string token;
+
+    while (std::getline(ss, token, ';')) {
+        result.push_back(token);
+    }
+
+    return result;
+}
+
 std::string sha256_file( std::string path) {
     std::ifstream file(path, std::ios::binary);
     if (!file) return "";
@@ -85,4 +101,28 @@ void tokenize_buffer_response(char* buffer,std::vector<std::string>&tokens){
     while(iss>>word){
         tokens.push_back(word);
     }
+}
+
+std::string getLastModifiedTime(const std::string& path) {
+    namespace fs = std::filesystem;
+
+    if (!fs::exists(path)) {
+        return "File not found";
+    }
+
+    auto ftime = fs::last_write_time(path);
+
+    // Convert file_time_type to system_clock::time_point
+    auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+        ftime - decltype(ftime)::clock::now() + std::chrono::system_clock::now()
+    );
+
+    std::time_t cftime = std::chrono::system_clock::to_time_t(sctp);
+
+    std::ostringstream oss;
+    std::tm tm{};
+    localtime_r(&cftime, &tm);  // POSIX safe local time
+
+    oss << std::put_time(&tm, "%Y-%m-%d:%H:%M:%S");
+    return oss.str();
 }

@@ -1,0 +1,1 @@
+g++ -g entry_point.cpp -o main_application -lssl -lcrypto -w

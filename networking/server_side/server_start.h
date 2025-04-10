@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstdio>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -13,6 +14,9 @@
 #include <map>
 #include "../constants.h"
 #include "../helper.h"
+#include <shared_mutex>
+#include <thread>
+#include<mutex>
 
 // can be brought through a db
 std::set<std::string> USER_NAMES = {"thunder", "cypher", "a"};
@@ -23,6 +27,13 @@ std::map<std::string, std::vector<std::string>> groups;
 std::map<std::string, std::set<int>> reverse_groups;
 // list of file names and their sha256 hash corresponding to a group
 std::map<std::string, std::map<std::string, std::string>> files_in_groups;
+
+//file name with their hashes
+std::shared_mutex lock;
+std::map<std::string,std::string>hash_maintainence;
+std::map<std::string,std::string>last_modified;
+//
+
 
 void *handleClientResponses(void *args)
 {
@@ -59,6 +70,23 @@ void *handleClientResponses(void *args)
 
         if (tokens[0] == DATA_STREAM)
         {
+            auto filename=tokens[1],timestamp=tokens[2],hash=tokens[3],extension=tokens[4];
+            auto created_file_name=SERVER_FILE+ hash+"."+extension;
+            std::ofstream outfile(created_file_name,std::ios::binary);
+            int bytes_recieved;
+            char buf[BUFFER_SIZE]={0};
+            while((bytes_recieved = recv((*client_socket),buf,BUFFER_SIZE,0))>0){
+                outfile.write(buffer,bytes_recieved);
+            }
+            std::unique_lock  writelock(lock);
+            if(last_modified[filename]<timestamp){
+                last_modified[filename]=timestamp;
+                hash_maintainence[filename]=hash;
+            }
+            else{
+                writelock.unlock();
+                std::remove(created_file_name.c_str());
+            }
         }
 
         // protocol for getting the sha256 file in a grp is GET_SHA_GRP_FILE GRP_ID FILENAME
