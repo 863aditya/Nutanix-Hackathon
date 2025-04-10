@@ -1,0 +1,16 @@
+networking part - to send and merge changes automatically 
+sending these changes  -  have to be encoded 
+merging can be done later on
+when a new file is created/ moved into the directory then it should sync with other systems 
+
+file system monitoring part -> 
+watch when a file is being opened and when some other system edits it then other systems should change the permissions to read only?
+when the file is being edited then can we acquire the lock automatically?
+illusion -> the file exists on the pc itself ? 
+
+allow settings -> allow race condition, allow locks, allow more advanced things
+
+broadcast - > make list of active connections?
+
+control info -> name of logged user
+next lines contains the ids of groups

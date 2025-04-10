@@ -1,0 +1,192 @@
+#include<iostream>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<unistd.h>
+#include<cstring>
+#include<pthread.h>
+#include<arpa/inet.h>
+#include<string>
+#include<cstring>
+#include<sstream>
+#include<vector>
+#include<set>
+#include<map>
+#include <fstream>
+#include<filesystem>
+#include "../constants.h"
+#include "../helper.h"
+
+
+#define CLIENT_SIDE_PORT 4600
+#define CLIENT_SIDE_IP "172.16.64.54"
+
+int client_socket;
+sockaddr_in address;
+sockaddr_in server_address;
+const std::string space = " ";
+
+bool is_logged_in=false;
+void init(){
+    client_socket=socket(AF_INET,SOCK_STREAM,0);
+    address.sin_family=AF_INET;
+    address.sin_port=htons(CLIENT_SIDE_PORT);
+    address.sin_addr.s_addr=inet_addr(CLIENT_SIDE_IP);
+    server_address.sin_family=AF_INET;
+    server_address.sin_port=htons(SERVER_PORT_N);
+    server_address.sin_addr.s_addr=inet_addr(SERVER_ADDR);
+}
+
+void send_data(char* data){
+    int connection_response = connect(client_socket,(struct sockaddr *)&server_address,sizeof(server_address));
+    while(connection_response<0){
+        connection_response = connect(client_socket,(struct sockaddr *)&server_address,sizeof(server_address));
+    }
+    send(client_socket,data,strlen(data),0);
+}
+
+void change_client(std::string &username){
+
+}
+
+void handle_new_file(std::string path_to_file,std::string path_to_folder,std::string file_without_extension){
+    std::string track_file_location = path_to_folder + TRACK + file_without_extension + TXT;
+    hash_each_line_to_file(path_to_file,track_file_location);
+}
+
+void handle_file_change(std::string path_to_file,std::string path_to_folder,std::string file_without_extension,std::string file_name_complete,std::string group){
+    std::string track_file_location = path_to_folder + TRACK + file_without_extension + TXT;
+    std::ifstream file(path_to_file);
+    std::ifstream track_file(track_file_location);
+    std::vector<std::string>initial_line_hashes;
+    std::vector<std::string>final_line_hashes;
+    std::string line;
+    std::vector<std::string>complete_lines;
+    while(std::getline(file,line)){
+        std::string new_hash=sha256(line);
+        complete_lines.emplace_back(line);
+        final_line_hashes.emplace_back(new_hash);
+    }
+    while(std::getline(track_file,line)){
+        std::string old_hash=sha256(line);
+        initial_line_hashes.emplace_back(old_hash);
+    }
+
+    for(int i=0;i<std::min(final_line_hashes.size(),initial_line_hashes.size());i++){
+        if(final_line_hashes[i]!=initial_line_hashes[i]){
+            std::string protocol_data = FILE_DIFF + space + group + space + file_name_complete + space + num_to_string(i+1) + space + complete_lines[i];
+            char* data= convert_to_char(protocol_data);
+            send_data(data);
+            delete data;
+        }
+    }
+    if(final_line_hashes.size()<initial_line_hashes.size()){
+        for(int i=final_line_hashes.size();i<initial_line_hashes.size();i++){
+            std::string protocol_data=FILE_DIFF + space + group + space + file_name_complete + space + num_to_string(i+1) + space + NOLINE ;
+            char* data= convert_to_char(protocol_data);
+            send_data(data);
+            delete data;
+        }
+    }
+    else if(final_line_hashes.size()!=initial_line_hashes.size()) {
+        for(int i= initial_line_hashes.size() ;i<final_line_hashes.size();i++){
+            std::string protocol_data=FILE_DIFF + space + group + space + file_name_complete + space + num_to_string(i+1) + space + complete_lines[i] ;
+            char* data= convert_to_char(protocol_data);
+            send_data(data);
+            delete data;
+        }
+    }
+}
+
+void* folder_checking_for_groups(void* args){
+    //assuming we have the group name in string format
+    std::string group_name;
+    std::string path = "../../data/" +group_name;
+    std::map<std::string,std::string>hashes;
+    while(true){
+        for (const auto& entry : std::filesystem::directory_iterator(path)) {
+            if (std::filesystem::is_regular_file(entry))
+                std::cout << "File: " << entry.path().filename() << '\n';
+            else if (std::filesystem::is_directory(entry))
+                std::cout << "Directory: " << entry.path().filename() << '\n';
+            std::string current_file_name = entry.path().filename();
+            std::string current_file_hash = sha256_file(entry.path());
+            if(hashes[current_file_name]!=current_file_hash){
+                // handle_file_change(entry.path());
+                hashes[current_file_name]=current_file_hash;
+            }
+        }
+
+        usleep(2000000);
+    }
+}
+
+void check_control_info(std::string &username){
+    std::ifstream file(CONTROL_INFO_FILE);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file\n";
+        return;
+    }
+    std::string line;
+    std::vector<std::string>tokens;
+    while(std::getline(file,line)){
+        tokens.emplace_back(line);
+    }
+    if(tokens[0]==username){
+        
+    }
+    else{
+        change_client(username);
+    }
+}
+
+void handleLogin(char* data,std::string username){
+    send_data(data);
+    char buffer[BUFFER_SIZE]={0};
+    read(client_socket,buffer,BUFFER_SIZE);
+    if(buffer == LOGGED_SUCC){
+        check_control_info(username);
+    }
+}
+
+void* initialise_groups(void* arg){
+    while(std::cin.get()){
+        std::string file_name;std::cin>>file_name;
+        std::string file_path=PARENT_DIRECTORY + DATA + file_name;
+        std::filesystem::create_directory(file_path);
+        
+        // std::filesystem::create_directory()
+    }
+}
+
+void* start_client(void* arg){
+    init();
+    std::cout<<"You have the following options\n1.LOGIN\n2.CREATE NEW USER\n"<<std::endl;
+    int option;std::cin>>option;
+    std::string username,password;
+    std::string message;
+    char* result ;
+    switch (option){
+    case 1:
+        std::cout<<"ENTER USERNAME AND PASSWORD"<<std::endl;
+        std::cin>>username>>password;
+        message = LOGIN + space + username + space +password;
+        result = new char[message.size()+1];
+        std::strcpy(result,message.c_str());
+        handleLogin(result,username);
+        delete result;
+        break;
+    case 2:
+        std::cout<<"ENTER NEW USERNAME AND PASSWORD"<<std::endl;
+        std::cin>>username>>password;
+        message = ADD_USER + space + username + space + password;
+        result=new char[message.size()+1];
+        std::strcpy(result,message.c_str());
+        
+        delete result;
+        break;
+    default:
+        break;
+
+    }
+    
+}
