@@ -15,7 +15,7 @@
 #define CONTROL_INFO "control_info.txt"
 #define GET "GET"
 #define GET_SHA_GRP_FILE "GET_SHA_GRP_FILE"
-#define SERVER_FILE "./server_data"
+#define SERVER_FILE "./server_data/"
 
 #define TRACK "/.track/"
 #define TXT ".txt"

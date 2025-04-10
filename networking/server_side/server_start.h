@@ -70,14 +70,17 @@ void *handleClientResponses(void *args)
         if (tokens[0] == DATA_STREAM)
         {
             std::cout << "In data stream\n";
+            // std::cout << tokens.size() << '\n';
             auto filename = tokens[1], timestamp = tokens[2], hash = tokens[3], extension = tokens[4];
             auto created_file_name = SERVER_FILE + hash + "." + extension;
+            std::cout << created_file_name << '\n';
             std::ofstream outfile(created_file_name, std::ios::binary);
             int bytes_recieved;
             char buf[BUFFER_SIZE] = {0};
             while ((bytes_recieved = recv((*client_socket), buf, BUFFER_SIZE, 0)) > 0)
             {
-                outfile.write(buffer, bytes_recieved);
+                std::cout << buf << '\n';
+                outfile.write(buf, bytes_recieved);
             }
             std::unique_lock writelock(lock);
             if (last_modified[filename] < timestamp)
@@ -90,6 +93,7 @@ void *handleClientResponses(void *args)
                 writelock.unlock();
                 std::remove(created_file_name.c_str());
             }
+            outfile.close();
         }
 
         // protocol for getting the sha256 file in a grp is GET_SHA_GRP_FILE GRP_ID FILENAME

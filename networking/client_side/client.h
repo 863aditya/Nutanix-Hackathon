@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include <iomanip>
 #include <ctime>
+#include <netinet/tcp.h>
 
 #define CLIENT_SIDE_PORT 4600
 #define CLIENT_SIDE_IP "172.16.64.54"
@@ -155,12 +156,14 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
             if (hashes[current_file_name] != current_file_hash)
             {
                 // handle_file_change(entry.path());
-                std::string protocol_data = DATA_STREAM + space + current_file_name + space + timestamp + space + "txt";
+                std::string protocol_data = DATA_STREAM + space + current_file_name + space + timestamp + space + current_file_hash + space + "txt" + space;
                 std::cout << protocol_data << '\n';
                 std::ifstream file(entry.path(), std::ios::binary);
                 char *result = convert_to_char(protocol_data);
                 // send(client_socket, result, sizeof(result), 0);
                 int new_client_socket = socket(AF_INET, SOCK_STREAM, 0);
+                int flag = 1;
+                setsockopt(new_client_socket, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int));
                 int connection_response = connect(new_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
                 printf("%d\n", connection_response);
                 while (connection_response < 0)
@@ -168,16 +171,18 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
                     connection_response = connect(new_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
                 }
                 send(new_client_socket, result, strlen(result), 0);
-                char buffer[BUFFER_SIZE] = {0};
+                usleep(1000000);
+                char buffer[BUFFER_SIZE];
                 while (!file.eof())
                 {
                     std::cout << "Inside if\n";
                     file.read(buffer, BUFFER_SIZE);
                     int bytes_read = file.gcount();
                     std::cout << "Before Send\n";
-                    send(new_client_socket,buffer,sizeof(buffer),0);
+                    send(new_client_socket, buffer, bytes_read, 0);
                     std::cout << "After Send\n";
                 }
+                close(new_client_socket);
                 hashes[current_file_name] = current_file_hash;
             }
         }
