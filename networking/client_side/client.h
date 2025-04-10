@@ -139,10 +139,12 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
             if (entry.path().filename() == CONTROL_INFO)
                 continue;
             if (std::filesystem::is_regular_file(entry))
-                std::cout << "File: " << entry.path().filename() << '\n';
+            {
+                // std::cout << "File: " << entry.path().filename() << '\n';
+            }
             else if (std::filesystem::is_directory(entry))
             {
-                std::cout << "Directory: " << entry.path().filename() << '\n';
+                // std::cout << "Directory: " << entry.path().filename() << '\n';
                 continue;
             }
             std::string current_file_name = entry.path().filename();
@@ -163,7 +165,7 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
                     connection_response = connect(new_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
                 }
                 send(new_client_socket, result, strlen(result), 0);
-                usleep(1000000);
+                usleep(50000);
                 std::ifstream file(entry.path(), std::ios::binary);
                 char buffer[BUFFER_SIZE];
                 while (!file.eof())
@@ -177,8 +179,7 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
                 hashes[current_file_name] = current_file_hash;
             }
         }
-        usleep(2000000);
-
+        usleep(50000);
         std::string get_data = GET;
         char *result = convert_to_char(get_data);
         int new_client_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -237,7 +238,7 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
             outfile.close();
             close(file_client_socket);
         }
-        usleep(2000000);
+        usleep(50000);
     }
 }
 
