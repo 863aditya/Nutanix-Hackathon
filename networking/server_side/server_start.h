@@ -160,30 +160,50 @@ void *run_server(void *arg)
 {
     std::cout << "starting server" << std::endl;
     int socket_server = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_server < 0)
+    {
+        perror("Socket creation failed");
+        return nullptr;
+    }
     sockaddr_in address_server;
     address_server.sin_family = AF_INET;
     address_server.sin_port = htons(SERVER_PORT_N);
-    address_server.sin_addr.s_addr = inet_addr(SERVER_ADDR);
-    bind(socket_server, (struct sockaddr *)&address_server, sizeof(address_server));
+    address_server.sin_addr.s_addr = INADDR_ANY;
     int opt = 1;
-    socklen_t optlen = sizeof(opt);
-    setsockopt(socket_server, SOL_SOCKET, SO_RCVTIMEO, &opt, optlen);
+    // setsockopt(socket_server, SOL_SOCKET, SO_RCVTIMEO, &opt, optlen);
+    setsockopt(socket_server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    // bind(socket_server, (struct sockaddr *)&address_server, sizeof(address_server));
+    if (bind(socket_server, (struct sockaddr *)&address_server, sizeof(address_server)) < 0)
+    {
+        perror("Bind failed");
+        close(socket_server);
+        return nullptr;
+    }
     listen(socket_server, MAX_NO_MACHINES);
+    socklen_t optlen = sizeof(opt);
     std::cout << "Listening" << std::endl;
 
     while (true)
     {
         // std::cout << "In while\n";
-        int client_socket = accept(socket_server, (struct sockaddr *)&address_server, &optlen);
+        // int client_socket = accept(socket_server, (struct sockaddr *)&address_server, &optlen);
         // std::cout << "below accept\n";
-        if (client_socket < 0)
+        int temp = accept(socket_server, nullptr, nullptr);
+        if (temp < 0)
         {
-            std::cout << "contiuning\n";
-            continue;
+            perror("Accept failed");
+            close(socket_server);
+            return nullptr;
         }
+        // if (client_socket < 0)
+        // {
+        //     std::cout << "contiuning\n";
+        //     continue;
+        // }
+        int *client_socket = new int(temp);
         pthread_t t;
 
-        void *arg = &client_socket;
+        void *arg = client_socket;
         pthread_create(&t, NULL, handleClientResponses, arg);
         std::cout << "starting a new thread" << std::endl;
         // pthread_join(t, NULL);
