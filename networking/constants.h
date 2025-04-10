@@ -14,6 +14,7 @@
 #define CONTROL_INFO_FILE "./data/control_info.txt"
 #define CONTROL_INFO "control_info.txt"
 #define GET "GET"
+#define REQ_FILE "REQ_FILE"
 #define GET_SHA_GRP_FILE "GET_SHA_GRP_FILE"
 #define SERVER_FILE "./server_data/"
 

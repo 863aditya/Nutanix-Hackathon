@@ -19,6 +19,8 @@
 #include <iomanip>
 #include <ctime>
 #include <netinet/tcp.h>
+#include <shared_mutex>
+#include <mutex>
 
 #define CLIENT_SIDE_PORT 4600
 #define CLIENT_SIDE_IP "172.16.64.54"
@@ -27,6 +29,7 @@ int client_socket;
 sockaddr_in address;
 sockaddr_in server_address;
 const std::string space = " ";
+std::map<std::string, std::string> hashes;
 
 bool is_logged_in = false;
 void init()
@@ -119,15 +122,8 @@ void handle_file_change(std::string path_to_file, std::string path_to_folder, st
 
 void folder_checking_for_groups(std::vector<std::string> &tokens)
 {
-    for (auto ele : tokens)
-    {
-        std::cout << ele << ' ';
-    }
-    std::cout << '\n';
-    // assuming we have the group name in string format
     std::string group_name;
     std::string path = "./data/";
-    std::map<std::string, std::string> hashes;
     int len = tokens.size();
     for (int i = 1; i < len; i++)
     {
@@ -136,7 +132,6 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
         int idx = str.find(';');
         std::string name = str.substr(0, idx);
         std::string hash = str.substr(idx + 1);
-        std::cout << name << ' ' << hash << '\n';
         hashes[name] = hash;
     }
     while (true)
@@ -152,15 +147,11 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
             std::string current_file_name = entry.path().filename();
             std::string current_file_hash = sha256_file(entry.path());
             std::string timestamp = getLastModifiedTime(entry.path());
-            std::cout << current_file_name << ' ' << hashes[current_file_name] << ' ' << current_file_hash << '\n';
+            std::cout << current_file_name << ' ' << current_file_hash << '\n';
             if (hashes[current_file_name] != current_file_hash)
             {
-                // handle_file_change(entry.path());
                 std::string protocol_data = DATA_STREAM + space + current_file_name + space + timestamp + space + current_file_hash + space + "txt" + space;
-                std::cout << protocol_data << '\n';
-                std::ifstream file(entry.path(), std::ios::binary);
                 char *result = convert_to_char(protocol_data);
-                // send(client_socket, result, sizeof(result), 0);
                 int new_client_socket = socket(AF_INET, SOCK_STREAM, 0);
                 int flag = 1;
                 setsockopt(new_client_socket, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int));
@@ -172,25 +163,82 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
                 }
                 send(new_client_socket, result, strlen(result), 0);
                 usleep(1000000);
+                std::ifstream file(entry.path(), std::ios::binary);
                 char buffer[BUFFER_SIZE];
                 while (!file.eof())
                 {
-                    std::cout << "Inside if\n";
                     file.read(buffer, BUFFER_SIZE);
                     int bytes_read = file.gcount();
-                    std::cout << "Before Send\n";
                     send(new_client_socket, buffer, bytes_read, 0);
-                    std::cout << "After Send\n";
                 }
+                file.close();
                 close(new_client_socket);
                 hashes[current_file_name] = current_file_hash;
             }
         }
-        std::cout << "After for\n";
+        usleep(2000000);
 
+        std::string get_data = GET;
+        char *result = convert_to_char(get_data);
+        int new_client_socket = socket(AF_INET, SOCK_STREAM, 0);
+        int flag = 1;
+        setsockopt(new_client_socket, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int));
+        int connection_response = connect(new_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
+        printf("Response from get %d\n", connection_response);
+        while (connection_response < 0)
+        {
+            connection_response = connect(new_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
+        }
+        send(new_client_socket, result, strlen(result), 0);
+        char buffer[BUFFER_SIZE] = {0};
+        recv(new_client_socket, buffer, BUFFER_SIZE, 0);
+        close(new_client_socket);
+        std::cout << buffer << '\n';
+        std::stringstream ss(buffer);
+        std::string item;
+        while (std::getline(ss, item, ';'))
+        {
+            std::string str = item;
+            int tmp_len = str.size();
+            int idx = str.find(':');
+            std::string filename = str.substr(0, idx);
+            std::string hash = str.substr(idx + 1);
+            std::cout << filename << ' ' << hash << '\n';
+            if (hashes[filename] == hash)
+            {
+                std::cout << filename + " is present with hash as " + hash << '\n';
+                continue;
+            }
+            hashes[filename] = hash;
+            int file_client_socket = socket(AF_INET, SOCK_STREAM, 0);
+            int flag_in = 1;
+            setsockopt(file_client_socket, IPPROTO_TCP, TCP_NODELAY, &flag_in, sizeof(int));
+            int connection_response_in = connect(file_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
+            printf("Response from get_in %d\n", connection_response_in);
+            while (connection_response_in < 0)
+            {
+                connection_response_in = connect(file_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
+            }
+            std::string data = REQ_FILE + space + filename;
+            char *result_in = convert_to_char(data);
+            send(file_client_socket, result_in, strlen(result_in), 0);
+            std::cout << "Requesting file : " << filename << '\n';
+            std::string created_file_name = "./" + DATA + filename;
+            std::ofstream outfile(created_file_name, std::ios::binary);
+            std::cout << created_file_name << '\n';
+            int bytes_recieved;
+            char buf[BUFFER_SIZE] = {0};
+            while ((bytes_recieved = recv(file_client_socket, buf, BUFFER_SIZE, 0)) > 0)
+            {
+                std::cout << "here\n";
+                std::cout << bytes_recieved << ' ' << buf << '\n';
+                outfile.write(buf, bytes_recieved);
+            }
+            outfile.close();
+            close(file_client_socket);
+        }
         usleep(2000000);
     }
-    std::cout << "After while\n";
 }
 
 void check_control_info(std::string &username)
@@ -210,7 +258,10 @@ void check_control_info(std::string &username)
     printf("check\n");
     if (tokens[0] == username)
     {
-        std::cout << "inside if\n";
+        // pthread_t t;
+        // pthread_create(&t, NULL, get_data, NULL);
+        // std::cout << "starting a new thread for GET_DATA" << std::endl;
+        // pthread_detach(t);
         folder_checking_for_groups(tokens);
     }
     else
@@ -224,13 +275,11 @@ void handleLogin(char *data, std::string username)
     send_data(data);
     printf("sent data\n");
     char buffer[BUFFER_SIZE] = {0};
-    // client_socket = socket(AF_INET, SOCK_STREAM, 0);
     recv(client_socket, buffer, BUFFER_SIZE, 0);
     printf("recv\n");
     std::cout << buffer << std::endl;
     if (buffer[0] == 'L')
     {
-        std::cout << "here\n";
         check_control_info(username);
     }
 }
@@ -243,8 +292,6 @@ void *initialise_groups(void *arg)
         std::cin >> file_name;
         std::string file_path = PARENT_DIRECTORY + DATA + file_name;
         std::filesystem::create_directory(file_path);
-
-        // std::filesystem::create_directory()
     }
 }
 

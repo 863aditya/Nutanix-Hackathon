@@ -69,7 +69,7 @@ void *handleClientResponses(void *args)
 
         if (tokens[0] == DATA_STREAM)
         {
-            std::cout << "In data stream\n";
+            // std::cout << "In data stream\n";
             // std::cout << tokens.size() << '\n';
             auto filename = tokens[1], timestamp = tokens[2], hash = tokens[3], extension = tokens[4];
             auto created_file_name = SERVER_FILE + hash + "." + extension;
@@ -86,14 +86,17 @@ void *handleClientResponses(void *args)
             if (last_modified[filename] < timestamp)
             {
                 last_modified[filename] = timestamp;
-                std::string prev_file_name = SERVER_FILE + hash_maintainence[filename]+ "." + extension;
+                std::string prev_file_name = SERVER_FILE + hash_maintainence[filename] + "." + extension;
                 std::remove(prev_file_name.c_str());
                 hash_maintainence[filename] = hash;
             }
             else
             {
                 writelock.unlock();
-                std::remove(created_file_name.c_str());
+                if (hash_maintainence[filename] != hash)
+                {
+                    std::remove(created_file_name.c_str());
+                }
             }
             outfile.close();
         }
@@ -110,6 +113,43 @@ void *handleClientResponses(void *args)
         // protocol for file diffs is FILE_DIFF GROUP_ID FILENAME LINE_NUMBER CHANGED_LINE
         if (tokens[0] == FILE_DIFF)
         {
+        }
+
+        if (tokens[0] == GET)
+        {
+            // std::cout << "Inside Get\n";
+            std::string data = "";
+            std::shared_lock<std::shared_mutex> readlock(lock);
+            for (auto ele : hash_maintainence)
+            {
+                std::cout << ele.first << ' ' << ele.second << '\n';
+                data += ele.first + ":" + ele.second + ";";
+            }
+            readlock.unlock();
+            std::cout << data << '\n';
+            char *reply = convert_to_char(data);
+            send((*client_socket), reply, strlen(reply), 0);
+        }
+
+        if (tokens[0] == REQ_FILE)
+        {
+            std::cout << REQ_FILE << '\n';
+            std::string filename = tokens[1];
+            std::cout << "Filebame : " << filename << '\n';
+            std::ifstream file(SERVER_FILE + hash_maintainence[filename] + ".txt", std::ios::binary);
+            std::cout << SERVER_FILE + hash_maintainence[filename] + ".txt" << '\n';
+            char buffer[BUFFER_SIZE];
+            while (!file.eof())
+            {
+                file.read(buffer, BUFFER_SIZE);
+                int bytes_read = file.gcount();
+                std::cout << bytes_read << ' ' << buffer << '\n';
+                send((*client_socket), buffer, bytes_read, 0);
+            }
+            // readlock.unlock();
+            file.close();
+            usleep(1000000);
+            std::cout << "After while\n";
         }
         close((*client_socket));
         printf("closing\n");
@@ -133,9 +173,9 @@ void *run_server(void *arg)
 
     while (true)
     {
-        std::cout << "In while\n";
+        // std::cout << "In while\n";
         int client_socket = accept(socket_server, (struct sockaddr *)&address_server, &optlen);
-        std::cout << "below accept\n";
+        // std::cout << "below accept\n";
         if (client_socket < 0)
         {
             std::cout << "contiuning\n";
