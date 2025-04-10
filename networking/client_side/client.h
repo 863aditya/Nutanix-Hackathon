@@ -22,8 +22,8 @@
 #include <shared_mutex>
 #include <mutex>
 
-#define CLIENT_SIDE_PORT 4600
-#define CLIENT_SIDE_IP "172.16.64.54"
+#define CLIENT_SIDE_PORT 4500
+#define CLIENT_SIDE_IP "172.20.5.176"
 
 int client_socket;
 sockaddr_in address;
@@ -40,7 +40,7 @@ void init()
     address.sin_addr.s_addr = inet_addr(CLIENT_SIDE_IP);
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(SERVER_PORT_N);
-    server_address.sin_addr.s_addr = inet_addr(SERVER_ADDR);
+    server_address.sin_addr.s_addr = inet_addr(CLIENT_SIDE_IP);
 }
 
 void send_data(char *data)
