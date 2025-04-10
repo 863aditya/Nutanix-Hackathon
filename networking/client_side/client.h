@@ -30,7 +30,7 @@ const std::string space = " ";
 bool is_logged_in = false;
 void init()
 {
-    client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    // client_socket = socket(AF_INET, SOCK_STREAM, 0);
     address.sin_family = AF_INET;
     address.sin_port = htons(CLIENT_SIDE_PORT);
     address.sin_addr.s_addr = inet_addr(CLIENT_SIDE_IP);
@@ -41,13 +41,15 @@ void init()
 
 void send_data(char *data)
 {
-    int connection_response = connect(client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
+    int new_client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    int connection_response = connect(new_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
     printf("%d\n", connection_response);
     while (connection_response < 0)
     {
-        connection_response = connect(client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
+        connection_response = connect(new_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
     }
-    send(client_socket, data, strlen(data), 0);
+    send(new_client_socket, data, strlen(data), 0);
+    client_socket = new_client_socket;
     printf("connection estab and data sent\n");
 }
 
@@ -116,6 +118,11 @@ void handle_file_change(std::string path_to_file, std::string path_to_folder, st
 
 void folder_checking_for_groups(std::vector<std::string> &tokens)
 {
+    for (auto ele : tokens)
+    {
+        std::cout << ele << ' ';
+    }
+    std::cout << '\n';
     // assuming we have the group name in string format
     std::string group_name;
     std::string path = "./data/";
@@ -134,8 +141,9 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
     while (true)
     {
         for (const auto &entry : std::filesystem::directory_iterator(path))
-        {   
-            if(entry.path().filename()==CONTROL_INFO)continue;
+        {
+            if (entry.path().filename() == CONTROL_INFO)
+                continue;
             if (std::filesystem::is_regular_file(entry))
                 std::cout << "File: " << entry.path().filename() << '\n';
             else if (std::filesystem::is_directory(entry))
@@ -143,25 +151,33 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
             std::string current_file_name = entry.path().filename();
             std::string current_file_hash = sha256_file(entry.path());
             std::string timestamp = getLastModifiedTime(entry.path());
+            std::cout << current_file_name << ' ' << hashes[current_file_name] << ' ' << current_file_hash << '\n';
             if (hashes[current_file_name] != current_file_hash)
             {
                 // handle_file_change(entry.path());
-                std::string protocol_data = DATA_STREAM + space + current_file_name + space+ timestamp + space + "txt";
-                std::ifstream file(entry.path(),std::ios::binary);
-                char* result =convert_to_char(protocol_data);
-                send(client_socket,result,sizeof(result),0);
-                char buffer[BUFFER_SIZE]={0};
-                while(!file.eof()){
+                std::string protocol_data = DATA_STREAM + space + current_file_name + space + timestamp + space + "txt";
+                std::cout << protocol_data << '\n';
+                std::ifstream file(entry.path(), std::ios::binary);
+                char *result = convert_to_char(protocol_data);
+                send(client_socket, result, sizeof(result), 0);
+                char buffer[BUFFER_SIZE] = {0};
+                while (!file.eof())
+                {
+                    std::cout << "Inside if\n";
                     file.read(buffer, BUFFER_SIZE);
                     int bytes_read = file.gcount();
-                    send(client_socket, buffer, bytes_read, 0);
+                    std::cout << "Before Send\n";
+                    send_data(buffer);
+                    std::cout << "After Send\n";
                 }
                 hashes[current_file_name] = current_file_hash;
             }
         }
+        std::cout << "After for\n";
 
         usleep(2000000);
     }
+    std::cout << "After while\n";
 }
 
 void check_control_info(std::string &username)
@@ -195,6 +211,7 @@ void handleLogin(char *data, std::string username)
     send_data(data);
     printf("sent data\n");
     char buffer[BUFFER_SIZE] = {0};
+    // client_socket = socket(AF_INET, SOCK_STREAM, 0);
     recv(client_socket, buffer, BUFFER_SIZE, 0);
     printf("recv\n");
     std::cout << buffer << std::endl;

@@ -16,7 +16,7 @@
 #include "../helper.h"
 #include <shared_mutex>
 #include <thread>
-#include<mutex>
+#include <mutex>
 
 // can be brought through a db
 std::set<std::string> USER_NAMES = {"thunder", "cypher", "a"};
@@ -28,12 +28,11 @@ std::map<std::string, std::set<int>> reverse_groups;
 // list of file names and their sha256 hash corresponding to a group
 std::map<std::string, std::map<std::string, std::string>> files_in_groups;
 
-//file name with their hashes
+// file name with their hashes
 std::shared_mutex lock;
-std::map<std::string,std::string>hash_maintainence;
-std::map<std::string,std::string>last_modified;
+std::map<std::string, std::string> hash_maintainence;
+std::map<std::string, std::string> last_modified;
 //
-
 
 void *handleClientResponses(void *args)
 {
@@ -70,20 +69,24 @@ void *handleClientResponses(void *args)
 
         if (tokens[0] == DATA_STREAM)
         {
-            auto filename=tokens[1],timestamp=tokens[2],hash=tokens[3],extension=tokens[4];
-            auto created_file_name=SERVER_FILE+ hash+"."+extension;
-            std::ofstream outfile(created_file_name,std::ios::binary);
+            std::cout << "In data stream\n";
+            auto filename = tokens[1], timestamp = tokens[2], hash = tokens[3], extension = tokens[4];
+            auto created_file_name = SERVER_FILE + hash + "." + extension;
+            std::ofstream outfile(created_file_name, std::ios::binary);
             int bytes_recieved;
-            char buf[BUFFER_SIZE]={0};
-            while((bytes_recieved = recv((*client_socket),buf,BUFFER_SIZE,0))>0){
-                outfile.write(buffer,bytes_recieved);
+            char buf[BUFFER_SIZE] = {0};
+            while ((bytes_recieved = recv((*client_socket), buf, BUFFER_SIZE, 0)) > 0)
+            {
+                outfile.write(buffer, bytes_recieved);
             }
-            std::unique_lock  writelock(lock);
-            if(last_modified[filename]<timestamp){
-                last_modified[filename]=timestamp;
-                hash_maintainence[filename]=hash;
+            std::unique_lock writelock(lock);
+            if (last_modified[filename] < timestamp)
+            {
+                last_modified[filename] = timestamp;
+                hash_maintainence[filename] = hash;
             }
-            else{
+            else
+            {
                 writelock.unlock();
                 std::remove(created_file_name.c_str());
             }
@@ -124,7 +127,9 @@ void *run_server(void *arg)
 
     while (true)
     {
+        std::cout << "In while\n";
         int client_socket = accept(socket_server, (struct sockaddr *)&address_server, &optlen);
+        std::cout << "below accept\n";
         if (client_socket < 0)
         {
             std::cout << "contiuning\n";
@@ -135,6 +140,7 @@ void *run_server(void *arg)
         void *arg = &client_socket;
         pthread_create(&t, NULL, handleClientResponses, arg);
         std::cout << "starting a new thread" << std::endl;
-        pthread_join(t, NULL);
+        // pthread_join(t, NULL);
+        pthread_detach(t);
     }
 }
