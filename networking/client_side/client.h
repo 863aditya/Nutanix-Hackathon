@@ -34,7 +34,6 @@ std::map<std::string, std::string> hashes;
 bool is_logged_in = false;
 void init()
 {
-    // client_socket = socket(AF_INET, SOCK_STREAM, 0);
     address.sin_family = AF_INET;
     address.sin_port = htons(CLIENT_SIDE_PORT);
     address.sin_addr.s_addr = inet_addr(CLIENT_SIDE_IP);
@@ -122,7 +121,6 @@ void handle_file_change(std::string path_to_file, std::string path_to_folder, st
 
 void folder_checking_for_groups(std::vector<std::string> &tokens)
 {
-    std::string group_name;
     std::string path = "./data/";
     int len = tokens.size();
     for (int i = 1; i < len; i++)
@@ -143,11 +141,14 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
             if (std::filesystem::is_regular_file(entry))
                 std::cout << "File: " << entry.path().filename() << '\n';
             else if (std::filesystem::is_directory(entry))
+            {
                 std::cout << "Directory: " << entry.path().filename() << '\n';
+                continue;
+            }
             std::string current_file_name = entry.path().filename();
             std::string current_file_hash = sha256_file(entry.path());
             std::string timestamp = getLastModifiedTime(entry.path());
-            std::cout << current_file_name << ' ' << current_file_hash << '\n';
+            // std::cout << current_file_name << ' ' << current_file_hash << '\n';
             if (hashes[current_file_name] != current_file_hash)
             {
                 std::string protocol_data = DATA_STREAM + space + current_file_name + space + timestamp + space + current_file_hash + space + "txt" + space;
@@ -184,7 +185,7 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
         int flag = 1;
         setsockopt(new_client_socket, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int));
         int connection_response = connect(new_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
-        printf("Response from get %d\n", connection_response);
+        printf("Response for GET request %d\n", connection_response);
         while (connection_response < 0)
         {
             connection_response = connect(new_client_socket, (struct sockaddr *)&server_address, sizeof(server_address));
@@ -230,7 +231,6 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
             char buf[BUFFER_SIZE] = {0};
             while ((bytes_recieved = recv(file_client_socket, buf, BUFFER_SIZE, 0)) > 0)
             {
-                std::cout << "here\n";
                 std::cout << bytes_recieved << ' ' << buf << '\n';
                 outfile.write(buf, bytes_recieved);
             }
@@ -258,10 +258,6 @@ void check_control_info(std::string &username)
     printf("check\n");
     if (tokens[0] == username)
     {
-        // pthread_t t;
-        // pthread_create(&t, NULL, get_data, NULL);
-        // std::cout << "starting a new thread for GET_DATA" << std::endl;
-        // pthread_detach(t);
         folder_checking_for_groups(tokens);
     }
     else
