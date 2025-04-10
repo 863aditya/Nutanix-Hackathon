@@ -97,6 +97,10 @@ void *handleClientResponses(void *args)
         {
             std::string data = "";
             std::shared_lock<std::shared_mutex> readlock(lock);
+            for (auto ele : hash_maintainence)
+            {
+                data += ele.first + ":" + ele.second + ";";
+            }
             readlock.unlock();
             char *reply = convert_to_char(data);
             send((*client_socket), reply, strlen(reply), 0);

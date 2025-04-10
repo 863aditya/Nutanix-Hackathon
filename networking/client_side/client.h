@@ -195,7 +195,7 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
         char buffer[BUFFER_SIZE] = {0};
         recv(new_client_socket, buffer, BUFFER_SIZE, 0);
         close(new_client_socket);
-        std::cout << buffer << '\n';
+        std::cout << "---" << buffer << '\n';
         std::stringstream ss(buffer);
         std::string item;
         while (std::getline(ss, item, ';'))
