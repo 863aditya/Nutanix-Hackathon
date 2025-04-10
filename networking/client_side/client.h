@@ -148,6 +148,8 @@ void folder_checking_for_groups(std::vector<std::string> &tokens)
                 // handle_file_change(entry.path());
                 std::string protocol_data = DATA_STREAM + space + current_file_name + space+ timestamp + space + "txt";
                 std::ifstream file(entry.path(),std::ios::binary);
+                char* result =convert_to_char(protocol_data);
+                send(client_socket,result,sizeof(result),0);
                 char buffer[BUFFER_SIZE]={0};
                 while(!file.eof()){
                     file.read(buffer, BUFFER_SIZE);
